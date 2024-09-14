@@ -2,13 +2,14 @@ package main
 
 import (
 	"fmt"
-	"github.com/damonlarcom/advancedwebscripting/job-tracker/controllers"
-	"github.com/damonlarcom/advancedwebscripting/job-tracker/db"
-	"github.com/damonlarcom/advancedwebscripting/job-tracker/middleware"
-	"github.com/go-chi/chi/v5"
-	"github.com/go-chi/cors"
 	"log"
 	"net/http"
+
+	"github.com/damonlarcom/advancedwebscripting/job-tracker/controllers"
+	"github.com/damonlarcom/advancedwebscripting/job-tracker/db"
+	"github.com/damonlarcom/advancedwebscripting/job-tracker/middleware/jwtMiddleware"
+	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/cors"
 )
 
 func main() {
@@ -24,7 +25,7 @@ func main() {
 
 	//Authed Routes
 	r.Group(func(r chi.Router) {
-		r.Use(middleware.Basic)
+		r.Use(jwtMiddleware.Jwt)
 
 		//Applications Endpoints
 		r.Get("/apps/{username}", controllers.GetApplicationsByUser)
@@ -35,7 +36,6 @@ func main() {
 
 		//User Endpoints
 		r.Get("/user/{username}", controllers.GetUserByUsername)
-		r.Put("/user/{username}/update", controllers.UpdateUserPassword)
 	})
 
 	//establish connection with mongo

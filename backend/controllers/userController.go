@@ -3,6 +3,9 @@ package controllers
 import (
 	"context"
 	"encoding/json"
+	"net/http"
+	"time"
+
 	"github.com/damonlarcom/advancedwebscripting/job-tracker/db"
 	"github.com/damonlarcom/advancedwebscripting/job-tracker/models"
 	"github.com/damonlarcom/advancedwebscripting/job-tracker/util"
@@ -10,9 +13,6 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
-	"golang.org/x/crypto/bcrypt"
-	"net/http"
-	"time"
 )
 
 func GetUserByUsername(w http.ResponseWriter, r *http.Request) {
@@ -38,11 +38,7 @@ func RegisterUser(w http.ResponseWriter, r *http.Request) {
 	user.RegistrationDate = time.Now().Format("01/02/2006")
 	util.PrintErr(err)
 
-	hashedPass, err := bcrypt.GenerateFromPassword([]byte(user.Password), bcrypt.DefaultCost)
-	user.Password = string(hashedPass)
-	util.PrintErr(err)
-
-	if len(user.Username) == 0 || len(user.Password) == 0 {
+	if len(user.Username) == 0 {
 		util.ResMissingFields(w)
 		return
 	}
@@ -58,26 +54,4 @@ func RegisterUser(w http.ResponseWriter, r *http.Request) {
 	util.PrintErr(err)
 
 	w.WriteHeader(http.StatusCreated)
-}
-
-func UpdateUserPassword(w http.ResponseWriter, r *http.Request) {
-	var user models.User
-	username := chi.URLParam(r, "username")
-
-	//decode body into user struct
-	err := json.NewDecoder(r.Body).Decode(&user)
-	util.PrintErr(err)
-
-	//hash password
-	hashPass, _ := bcrypt.GenerateFromPassword([]byte(user.Password), bcrypt.DefaultCost)
-	update := bson.D{{"$set", bson.D{{"Password", string(hashPass)}}}}
-
-	//update user in mongo collection
-	result, err := db.UserCollection.UpdateOne(context.TODO(), bson.D{{"Username", username}}, update)
-
-	//check if any user was matched, defaults to status 200 if user was updated
-	if result.MatchedCount == 0 {
-		util.ResNotFound(w)
-		return
-	}
 }
