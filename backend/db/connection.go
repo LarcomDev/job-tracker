@@ -2,6 +2,7 @@ package db
 
 import (
 	"context"
+
 	"github.com/damonlarcom/advancedwebscripting/job-tracker/util"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
@@ -14,7 +15,7 @@ var (
 	UserCollection *mongo.Collection
 )
 
-const url = "mongodb+srv://dlarcom:CnFj8a8Zj9lYbKe0@tracker.zvuawzs.mongodb.net/?authMechanism=SCRAM-SHA-1"
+const url = "mongodb://localhost:27017"
 
 // Connect establishes a connection with mongo
 func Connect() {
