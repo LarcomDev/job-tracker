@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import Table from '../components/Table'
 import conf from '../conf.json'
+import { useAuth } from '../components/Auth'
 import {
     BarChart,
     Bar,
@@ -23,6 +24,7 @@ const Home = () => {
     const [username, setUsername] = useState('')
     const [statusFilter, setStatusFilter] = useState('All')
     const navigate = useNavigate()
+    const auth = useAuth()
 
     useEffect(() => {
         const token = localStorage.getItem('token')
@@ -69,8 +71,7 @@ const Home = () => {
     }, [])
 
     const handleLogout = () => {
-        localStorage.removeItem('token')
-        navigate('/login')
+        auth.logout()
     }
 
     const filteredApps = statusFilter === 'All' 
