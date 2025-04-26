@@ -2,16 +2,35 @@ package main
 
 import (
 	"fmt"
+	"log"
+	"net/http"
+	"os"
+
 	"github.com/damonlarcom/advancedwebscripting/job-tracker/controllers"
 	"github.com/damonlarcom/advancedwebscripting/job-tracker/db"
 	"github.com/damonlarcom/advancedwebscripting/job-tracker/middleware"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/cors"
-	"log"
-	"net/http"
+	"github.com/joho/godotenv"
 )
 
 func main() {
+	// Load environment variables
+	if err := godotenv.Load(); err != nil {
+		log.Fatal("Error loading .env file")
+	}
+
+	// Verify Auth0 configuration
+	auth0Domain := os.Getenv("AUTH0_DOMAIN")
+	auth0Audience := os.Getenv("AUTH0_AUDIENCE")
+
+	if auth0Domain == "" || auth0Audience == "" {
+		log.Fatal("Auth0 configuration is missing. Please check your .env file")
+	}
+
+	log.Printf("Auth0 Domain: %s", auth0Domain)
+	log.Printf("Auth0 Audience: %s", auth0Audience)
+
 	r := chi.NewRouter()
 	r.Use(cors.AllowAll().Handler)
 
@@ -24,7 +43,7 @@ func main() {
 
 	//Authed Routes
 	r.Group(func(r chi.Router) {
-		r.Use(middleware.Basic)
+		r.Use(middleware.JWTWithConfig)
 
 		//Applications Endpoints
 		r.Get("/apps/{username}", controllers.GetApplicationsByUser)

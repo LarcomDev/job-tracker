@@ -3,6 +3,10 @@ import Tr from "./Tr"
 import moment from 'moment'
 
 const ApplicationRow = ({app}) => {
+    if (!app || !app._id) {
+        console.error('Invalid application data:', app)
+        return null
+    }
     
     const colors = {
         submitted : "bg-green-500",
@@ -23,19 +27,18 @@ const ApplicationRow = ({app}) => {
                 return colors.deferred
             default:
                 return ""
-
         }
     }
 
-  return (
-    <Tr className='text-center border-x-[1px] border-white' app={app}>
-        <td className='border-[1px] border-white'>{app.company}</td>
-        <td className={'border-[1px] border-white text-black ' + getColor(app.status)}>{app.status}</td>
-        <td className={'border-[1px] border-white'}>{app.title}</td>
-        <td className='border-[1px] border-white'>{app.location}</td>
-        <td className='border-[1px] border-white'>{moment(app.application_date).format('MMM Do YYYY, h:mm a')}</td>
-    </Tr>
-  )
+    return (
+        <Tr app={app}>
+            <td className='border-[1px] border-white'>{app.company}</td>
+            <td className={'border-[1px] border-white text-black ' + getColor(app.status)}>{app.status}</td>
+            <td className={'border-[1px] border-white'}>{app.title}</td>
+            <td className='border-[1px] border-white'>{app.location}</td>
+            <td className='border-[1px] border-white'>{moment(app.application_date).format('MMM Do YYYY, h:mm a')}</td>
+        </Tr>
+    )
 }
 
 export default ApplicationRow
