@@ -4,6 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net/http"
+	"time"
+
 	"github.com/damonlarcom/advancedwebscripting/job-tracker/db"
 	"github.com/damonlarcom/advancedwebscripting/job-tracker/models"
 	"github.com/damonlarcom/advancedwebscripting/job-tracker/util"
@@ -11,8 +14,6 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
-	"net/http"
-	"time"
 )
 
 func GetApplicationsByUser(w http.ResponseWriter, r *http.Request) {
@@ -52,24 +53,71 @@ func GetApplicationById(w http.ResponseWriter, r *http.Request) {
 	w.Write(util.MarshalResponse(models.Response{Status: http.StatusOK, Data: app}))
 }
 
-func CreateApplication(w http.ResponseWriter, r *http.Request) {
-	var app models.Application
-	user := chi.URLParam(r, "username")
+func GetApplications(w http.ResponseWriter, r *http.Request) {
+	collection := db.JobsCollection
+	cursor, err := collection.Find(context.Background(), bson.M{})
+	if err != nil {
+		util.ResInternalServerError(w)
+		return
+	}
+	defer cursor.Close(context.Background())
 
-	err := json.NewDecoder(r.Body).Decode(&app)
-	util.PrintErr(err)
-
-	app.AppId = primitive.NewObjectID()
-	app.UserId = user
-	app.ApplicationDate = time.Now().UTC()
-
-	//set note date for each note
-	for i := range app.Notes {
-		app.Notes[i].Date = time.Now().UTC()
+	var applications []models.Application
+	if err := cursor.All(context.Background(), &applications); err != nil {
+		util.ResInternalServerError(w)
+		return
 	}
 
-	_, err = db.JobsCollection.InsertOne(context.TODO(), app)
-	util.PrintErr(err)
+	util.ResOK(w, applications)
+}
+
+func GetApplication(w http.ResponseWriter, r *http.Request) {
+	id := chi.URLParam(r, "id")
+	objectID, err := primitive.ObjectIDFromHex(id)
+	if err != nil {
+		util.ResBadRequest(w)
+		return
+	}
+
+	collection := db.JobsCollection
+	var application models.Application
+	err = collection.FindOne(context.Background(), bson.M{"_id": objectID}).Decode(&application)
+	if err != nil {
+		if err == mongo.ErrNoDocuments {
+			util.ResNotFound(w)
+		} else {
+			util.ResInternalServerError(w)
+		}
+		return
+	}
+
+	util.ResOK(w, application)
+}
+
+func CreateApplication(w http.ResponseWriter, r *http.Request) {
+	var application models.Application
+	if err := json.NewDecoder(r.Body).Decode(&application); err != nil {
+		util.ResBadRequest(w)
+		return
+	}
+
+	// Set default status if not provided
+	if application.Status == "" {
+		application.Status = "Applied"
+	}
+
+	// Insert the application into MongoDB
+	collection := db.JobsCollection
+	result, err := collection.InsertOne(context.Background(), application)
+	if err != nil {
+		util.ResInternalServerError(w)
+		return
+	}
+
+	// Return success response with the inserted ID
+	util.ResOK(w, map[string]interface{}{
+		"id": result.InsertedID,
+	})
 }
 
 func UpdateBaseApplication(w http.ResponseWriter, r *http.Request) {
@@ -94,7 +142,6 @@ func UpdateBaseApplication(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Write(util.MarshalResponse(models.Response{Status: http.StatusOK, Message: "Application successfully updated"}))
-
 }
 
 func AddApplicationNote(w http.ResponseWriter, r *http.Request) {
@@ -119,4 +166,127 @@ func AddApplicationNote(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.Write(util.MarshalResponse(models.Response{Status: http.StatusOK, Message: "Note(s) added to application"}))
+}
+
+func UpdateApplication(w http.ResponseWriter, r *http.Request) {
+	id := chi.URLParam(r, "id")
+	objectID, err := primitive.ObjectIDFromHex(id)
+	if err != nil {
+		util.ResBadRequest(w)
+		return
+	}
+
+	var application models.Application
+	if err := json.NewDecoder(r.Body).Decode(&application); err != nil {
+		util.ResBadRequest(w)
+		return
+	}
+
+	collection := db.JobsCollection
+	result, err := collection.ReplaceOne(context.Background(), bson.M{"_id": objectID}, application)
+	if err != nil {
+		util.ResInternalServerError(w)
+		return
+	}
+
+	if result.MatchedCount == 0 {
+		util.ResNotFound(w)
+		return
+	}
+
+	application.AppId = objectID
+	util.ResOK(w, application)
+}
+
+func DeleteApplication(w http.ResponseWriter, r *http.Request) {
+	id := chi.URLParam(r, "id")
+	objectID, err := primitive.ObjectIDFromHex(id)
+	if err != nil {
+		util.ResBadRequest(w)
+		return
+	}
+
+	collection := db.JobsCollection
+	result, err := collection.DeleteOne(context.Background(), bson.M{"_id": objectID})
+	if err != nil {
+		util.ResInternalServerError(w)
+		return
+	}
+
+	if result.DeletedCount == 0 {
+		util.ResNotFound(w)
+		return
+	}
+
+	util.ResOK(w, map[string]string{"message": "Application deleted successfully"})
+}
+
+func UpdateApplicationStatus(w http.ResponseWriter, r *http.Request) {
+	id := chi.URLParam(r, "id")
+	objectID, err := primitive.ObjectIDFromHex(id)
+	if err != nil {
+		util.ResBadRequest(w)
+		return
+	}
+
+	var statusUpdate struct {
+		Status string `json:"status"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&statusUpdate); err != nil {
+		util.ResBadRequest(w)
+		return
+	}
+
+	collection := db.JobsCollection
+	result, err := collection.UpdateOne(
+		context.Background(),
+		bson.M{"_id": objectID},
+		bson.M{"$set": bson.M{"status": statusUpdate.Status}},
+	)
+	if err != nil {
+		util.ResInternalServerError(w)
+		return
+	}
+
+	if result.MatchedCount == 0 {
+		util.ResNotFound(w)
+		return
+	}
+
+	util.ResOK(w, map[string]string{"message": "Application status updated successfully"})
+}
+
+func AddNote(w http.ResponseWriter, r *http.Request) {
+	id := chi.URLParam(r, "id")
+	objectID, err := primitive.ObjectIDFromHex(id)
+	if err != nil {
+		util.ResBadRequest(w)
+		return
+	}
+
+	var note struct {
+		Content string `json:"content"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&note); err != nil {
+		util.ResBadRequest(w)
+		return
+	}
+
+	collection := db.JobsCollection
+	result, err := collection.UpdateOne(
+		context.Background(),
+		bson.M{"_id": objectID},
+		bson.M{"$push": bson.M{"notes": note.Content}},
+	)
+	if err != nil {
+		util.ResInternalServerError(w)
+		return
+	}
+
+	if result.MatchedCount == 0 {
+		util.ResNotFound(w)
+		return
+	}
+
+	util.ResOK(w, map[string]string{"message": "Note added successfully"})
 }

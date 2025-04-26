@@ -20,7 +20,7 @@ const NewNoteCard = ({appId}) => {
             fetch(conf.url + `/apps/${appId}/notes`, {
                 method: "PUT",
                 headers: {
-                    "Authorization": JSON.parse(localStorage.getItem("creds"))
+                    "Authorization": `Bearer ${localStorage.getItem("token")}`
                 },
                 body: JSON.stringify([{title: title, content: content}])
             })

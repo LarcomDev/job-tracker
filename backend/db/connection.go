@@ -2,7 +2,9 @@ package db
 
 import (
 	"context"
-	"github.com/damonlarcom/advancedwebscripting/job-tracker/util"
+	"log"
+	"os"
+
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
@@ -14,13 +16,32 @@ var (
 	UserCollection *mongo.Collection
 )
 
-const url = "mongodb+srv://dlarcom:CnFj8a8Zj9lYbKe0@tracker.zvuawzs.mongodb.net/?authMechanism=SCRAM-SHA-1"
-
 // Connect establishes a connection with mongo
 func Connect() {
+	// Get MongoDB URL from environment variable, default to localhost if not set
+	mongoURL := os.Getenv("MONGODB_URL")
+	if mongoURL == "" {
+		mongoURL = "mongodb://localhost:27017"
+	}
+	log.Printf("Connecting to MongoDB at: %s", mongoURL)
+
+	// Create client options
+	clientOptions := options.Client().ApplyURI(mongoURL)
+
+	// Connect to MongoDB
 	var err error
-	mongoConnection, err = mongo.Connect(context.TODO(), options.Client().ApplyURI(url))
-	util.ErrMongoConnection(err)
+	mongoConnection, err = mongo.Connect(context.Background(), clientOptions)
+	if err != nil {
+		log.Fatalf("Failed to connect to MongoDB: %v", err)
+	}
+
+	// Check the connection
+	err = mongoConnection.Ping(context.Background(), nil)
+	if err != nil {
+		log.Fatalf("Failed to ping MongoDB: %v", err)
+	}
+
+	log.Println("Successfully connected to MongoDB!")
 
 	db := mongoConnection.Database("tracker")
 	JobsCollection = db.Collection("jobs")
