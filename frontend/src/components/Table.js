@@ -174,11 +174,11 @@ const Table = ({apps, perPage}) => {
             )}
 
             {totalPages > 1 && (
-                <div className="flex justify-between items-center mt-6">
-                    <div className="text-slate-300">
+                <div className="flex flex-col sm:flex-row justify-between items-center gap-4 px-6 py-4 border-t border-slate-600/50">
+                    <div className="text-slate-300 text-sm">
                         Showing {startIndex + 1} to {Math.min(endIndex, apps.length)} of {apps.length} applications
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-3">
                         <button
                             onClick={() => setCurrentPage(1)}
                             disabled={currentPage === 1}
@@ -193,20 +193,71 @@ const Table = ({apps, perPage}) => {
                         >
                             <ChevronLeftIcon className="h-5 w-5" />
                         </button>
-                        <div className="flex items-center gap-1">
-                            {Array.from({ length: totalPages }, (_, i) => i + 1).map((pageNum) => (
-                                <button
-                                    key={pageNum}
-                                    onClick={() => setCurrentPage(pageNum)}
-                                    className={`px-3 py-1 rounded-lg transition-colors duration-200 ${
-                                        currentPage === pageNum
-                                            ? 'bg-blue-500 text-white'
-                                            : 'bg-slate-600/50 text-slate-300 hover:bg-slate-600'
-                                    }`}
-                                >
-                                    {pageNum}
-                                </button>
-                            ))}
+                        <div className="flex items-center gap-2">
+                            {(() => {
+                                const pageNumbers = [];
+                                const siblingCount = 1; // Number of pages to show on each side of current page
+                                
+                                // Always show first page
+                                if (currentPage > 2 + siblingCount) {
+                                    pageNumbers.push(
+                                        <button
+                                            key={1}
+                                            onClick={() => setCurrentPage(1)}
+                                            className="w-8 h-8 flex items-center justify-center rounded-lg transition-colors duration-200 bg-slate-600/50 text-slate-300 hover:bg-slate-600"
+                                        >
+                                            1
+                                        </button>
+                                    );
+                                    // Add ellipsis if there's a gap
+                                    if (currentPage > 3 + siblingCount) {
+                                        pageNumbers.push(
+                                            <span key="ellipsis-1" className="text-slate-400 px-1">...</span>
+                                        );
+                                    }
+                                }
+
+                                // Calculate range around current page
+                                const startPage = Math.max(1, currentPage - siblingCount);
+                                const endPage = Math.min(totalPages, currentPage + siblingCount);
+
+                                // Add page numbers around current page
+                                for (let i = startPage; i <= endPage; i++) {
+                                    pageNumbers.push(
+                                        <button
+                                            key={i}
+                                            onClick={() => setCurrentPage(i)}
+                                            className={`w-8 h-8 flex items-center justify-center rounded-lg transition-colors duration-200 ${
+                                                currentPage === i
+                                                    ? 'bg-blue-500 text-white'
+                                                    : 'bg-slate-600/50 text-slate-300 hover:bg-slate-600'
+                                            }`}
+                                        >
+                                            {i}
+                                        </button>
+                                    );
+                                }
+
+                                // Add ellipsis and last page if needed
+                                if (currentPage < totalPages - 1 - siblingCount) {
+                                    if (currentPage < totalPages - 2 - siblingCount) {
+                                        pageNumbers.push(
+                                            <span key="ellipsis-2" className="text-slate-400 px-1">...</span>
+                                        );
+                                    }
+                                    pageNumbers.push(
+                                        <button
+                                            key={totalPages}
+                                            onClick={() => setCurrentPage(totalPages)}
+                                            className="w-8 h-8 flex items-center justify-center rounded-lg transition-colors duration-200 bg-slate-600/50 text-slate-300 hover:bg-slate-600"
+                                        >
+                                            {totalPages}
+                                        </button>
+                                    );
+                                }
+
+                                return pageNumbers;
+                            })()}
                         </div>
                         <button
                             onClick={() => setCurrentPage(currentPage + 1)}
